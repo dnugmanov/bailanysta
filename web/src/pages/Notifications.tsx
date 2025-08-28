@@ -28,12 +28,7 @@ export default function NotificationsPage() {
     retry: 1,
   })
 
-  // Debug logging
-  console.log('All notifications:', allNotifications)
-  console.log('Unread notifications:', unreadNotifications)
-  console.log('Is loading:', isLoading)
-  console.log('All error:', allError)
-  console.log('Unread error:', unreadError)
+
 
   const markAllAsReadMutation = useMutation({
     mutationFn: () => apiClient.markAllNotificationsAsRead(),
