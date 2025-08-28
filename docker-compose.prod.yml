@@ -1,16 +1,13 @@
-
 services:
   db:
     image: postgres:15-alpine
-    container_name: bailanysta-db
+    container_name: bailanysta-db-prod
     environment:
       POSTGRES_DB: bailanysta
       POSTGRES_USER: bailanysta_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-bailanysta_password}
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_prod:/var/lib/postgresql/data
       - ./api/internal/db/migrations:/migrations:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bailanysta_user -d bailanysta"]
@@ -18,21 +15,21 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - bailanysta-prod
 
   api:
     build:
       context: .
       dockerfile: api/Dockerfile
-    container_name: bailanysta-api
+    container_name: bailanysta-api-prod
     environment:
-      - DATABASE_URL=postgres://bailanysta_user:${DB_PASSWORD:-bailanysta_password}@db:5432/bailanysta?sslmode=disable
-      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - DATABASE_URL=postgres://bailanysta_user:${DB_PASSWORD}@db:5432/bailanysta?sslmode=disable
+      - JWT_SECRET=${JWT_SECRET}
       - PORT=8080
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - MIGRATE_ON_START=true
-      - CORS_ORIGIN=http://localhost:3000
-    ports:
-      - "8080:8080"
+      - CORS_ORIGIN=https://bailanysta.nd-lab.space
     depends_on:
       db:
         condition: service_healthy
@@ -42,22 +39,41 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    networks:
+      - bailanysta-prod
 
   web:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: bailanysta-web
-    ports:
-      - "3000:80"
+    container_name: bailanysta-web-prod
     depends_on:
       - api
     restart: unless-stopped
+    networks:
+      - bailanysta-prod
+
+  nginx:
+    image: nginx:alpine
+    container_name: bailanysta-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ${SSL_CERT_PATH}:/etc/nginx/ssl/cert.pem:ro
+      - ${SSL_KEY_PATH}:/etc/nginx/ssl/key.pem:ro
+    depends_on:
+      - web
+      - api
+    restart: unless-stopped
+    networks:
+      - bailanysta-prod
 
 volumes:
-  postgres_data:
+  postgres_data_prod:
     driver: local
 
 networks:
-  default:
-    name: bailanysta-network
+  bailanysta-prod:
+    name: bailanysta-prod-network

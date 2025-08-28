@@ -12,9 +12,19 @@ dev: ## Start development environment
 	@echo "🔧 Starting development environment..."
 	docker-compose up --build -d
 
+prod: ## Start production environment with SSL
+	@echo "🚀 Starting production environment..."
+	@if [ ! -f .env ]; then echo "❌ Error: .env file not found. Copy .env.example to .env and configure it."; exit 1; fi
+	@if [ -z "$$SSL_CERT_PATH" ] || [ -z "$$SSL_KEY_PATH" ]; then echo "❌ Error: SSL_CERT_PATH and SSL_KEY_PATH must be set in .env"; exit 1; fi
+	docker-compose -f docker-compose.prod.yml up --build -d
+
 stop: ## Stop all services
 	@echo "🛑 Stopping all services..."
 	docker-compose down
+
+stop-prod: ## Stop production services
+	@echo "🛑 Stopping production services..."
+	docker-compose -f docker-compose.prod.yml down
 
 restart: ## Restart all services
 	@echo "🔄 Restarting all services..."
@@ -32,6 +42,12 @@ logs-web: ## Show web logs
 
 logs-db: ## Show database logs
 	docker-compose logs -f db
+
+logs-prod: ## Show production logs
+	docker-compose -f docker-compose.prod.yml logs -f
+
+logs-nginx: ## Show nginx logs (production)
+	docker-compose -f docker-compose.prod.yml logs -f nginx
 
 # Build commands
 build: ## Build all services
@@ -59,3 +75,7 @@ health: ## Check health of all services
 clean: ## Clean up containers and images
 	@echo "🧹 Cleaning up..."
 	docker-compose down --rmi all --volumes --remove-orphans
+
+clean-prod: ## Clean up production containers and images
+	@echo "🧹 Cleaning up production..."
+	docker-compose -f docker-compose.prod.yml down --rmi all --volumes --remove-orphans
