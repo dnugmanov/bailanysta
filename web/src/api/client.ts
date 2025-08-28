@@ -28,7 +28,12 @@ class ApiClient {
   private accessToken: string | null = null
 
   constructor() {
-    this.baseURL = import.meta.env?.VITE_API_URL || 'http://localhost:8080'
+    // In production, use relative URLs to avoid CORS issues
+    if (typeof window !== 'undefined' && window.location.hostname === 'bailanysta.nd-lab.space') {
+      this.baseURL = '' // Use relative URLs
+    } else {
+      this.baseURL = import.meta.env?.VITE_API_URL || 'http://localhost:8080'
+    }
     // Initialize token from localStorage if available
     this.accessToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
     

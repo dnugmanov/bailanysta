@@ -15,7 +15,6 @@ dev: ## Start development environment
 prod: ## Start production environment with SSL
 	@echo "🚀 Starting production environment..."
 	@if [ ! -f .env ]; then echo "❌ Error: .env file not found. Copy .env.example to .env and configure it."; exit 1; fi
-	@if [ -z "$$SSL_CERT_PATH" ] || [ -z "$$SSL_KEY_PATH" ]; then echo "❌ Error: SSL_CERT_PATH and SSL_KEY_PATH must be set in .env"; exit 1; fi
 	docker-compose -f docker-compose.prod.yml up --build -d
 
 stop: ## Stop all services
