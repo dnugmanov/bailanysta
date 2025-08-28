@@ -1,119 +1,128 @@
-.PHONY: help build test clean dev prod stop logs migrate backup
+.PHONY: help install build start stop restart logs clean dev prod migrate
 
 # Default target
 help: ## Show this help message
-	@echo "Bailanysta - Educational Platform"
+	@echo "🚀 Bailanysta - Educational Platform"
 	@echo ""
 	@echo "Available commands:"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# Development commands
-dev: ## Start development environment
-	./infra/docker/deploy.sh dev
-
-prod: ## Start production environment
-	./infra/docker/deploy.sh prod
-
-stop: ## Stop all services
-	./infra/docker/deploy.sh stop
-
-logs: ## Show all logs
-	./infra/docker/deploy.sh logs
-
-logs-%: ## Show logs for specific service (e.g., make logs-api)
-	./infra/docker/deploy.sh logs $*
-
-build: ## Build all services
-	./infra/docker/deploy.sh build
-
-# Database commands
-migrate: ## Run database migrations
-	./infra/docker/deploy.sh migrate
-
-backup: ## Create database backup
-	./infra/docker/deploy.sh backup
-
-# Testing commands
-test: ## Run all tests
-	go test ./api/... -v
-	cd web && npm test -- --run
-
-test-go: ## Run Go tests only
-	go test ./api/... -v
-
-test-go-%: ## Run specific Go package tests
-	go test ./api/internal/$*/... -v
-
-test-frontend: ## Run frontend tests only
-	cd web && npm test -- --run
-
-test-frontend-watch: ## Run frontend tests in watch mode
-	cd web && npm test
-
-# Code quality
-lint: ## Run linters
-	cd web && npm run lint
-	# Add Go linter here if needed
-
-format: ## Format code
-	cd web && npm run format
-	# Add Go formatter here if needed
-
-# Cleanup
-clean: ## Clean up Docker resources
-	./infra/docker/deploy.sh cleanup
-
-clean-all: ## Clean up everything including volumes
-	docker-compose down -v --remove-orphans
-	docker system prune -f --volumes
-
-# Installation and setup
-install: ## Install all dependencies
+# Installation
+install: ## Install dependencies
+	@echo "📦 Installing dependencies..."
 	go mod tidy
 	cd web && npm install
 
-setup: ## Initial project setup
-	@echo "Setting up Bailanysta project..."
-	make install
-	@echo "Setup complete! Run 'make dev' to start development environment."
+# Development commands
+dev: ## Start development environment
+	@echo "🔧 Starting development environment..."
+	docker-compose up --build -d
 
-# Docker utilities
-docker-clean: ## Remove all Docker containers, images, and volumes
-	docker stop $$(docker ps -aq) 2>/dev/null || true
-	docker rm $$(docker ps -aq) 2>/dev/null || true
-	docker rmi $$(docker images -q) 2>/dev/null || true
-	docker volume rm $$(docker volume ls -q) 2>/dev/null || true
-	docker system prune -f --volumes
+start: ## Start all services
+	@echo "🚀 Starting all services..."
+	docker-compose up -d
+
+stop: ## Stop all services
+	@echo "🛑 Stopping all services..."
+	docker-compose down
+
+restart: ## Restart all services
+	@echo "🔄 Restarting all services..."
+	docker-compose restart
+
+logs: ## Show logs for all services
+	docker-compose logs -f
+
+logs-api: ## Show API logs
+	docker-compose logs -f api
+
+logs-web: ## Show web logs
+	docker-compose logs -f web
+
+logs-db: ## Show database logs
+	docker-compose logs -f db
+
+# Build commands
+build: ## Build all services
+	@echo "🔨 Building all services..."
+	docker-compose build
+
+build-api: ## Build API service
+	@echo "🔨 Building API..."
+	docker-compose build api
+
+build-web: ## Build web service
+	@echo "🔨 Building web..."
+	docker-compose build web
+
+# Production deployment
+prod: ## Deploy to production
+	@echo "🚀 Deploying to production..."
+	@if [ ! -f .env ]; then echo "❌ Error: .env file not found. Copy .env.example to .env and configure it."; exit 1; fi
+	docker-compose -f docker-compose.yml up --build -d
+
+# Database commands
+migrate: ## Run database migrations
+	@echo "🗃️ Running database migrations..."
+	docker-compose exec api ./bailanysta-api -migrate
+
+migrate-force: ## Force run migrations (use with caution)
+	@echo "⚠️ Force running database migrations..."
+	docker-compose exec db psql -U bailanysta_user -d bailanysta -f /migrations/0001_init.sql
+
+# Utility commands
+shell-api: ## Access API container shell
+	docker-compose exec api sh
+
+shell-db: ## Access database shell
+	docker-compose exec db psql -U bailanysta_user -d bailanysta
+
+shell-web: ## Access web container shell
+	docker-compose exec web sh
 
 # Health checks
 health: ## Check health of all services
-	@echo "Checking API health..."
-	curl -f http://localhost:8080/health || echo "API is not healthy"
-	@echo "Checking frontend..."
-	curl -f http://localhost:3000/ || echo "Frontend is not healthy"
+	@echo "🩺 Checking services health..."
+	@echo "API Health:"
+	@curl -s http://localhost:8080/health | jq . || echo "API not responding"
+	@echo "Frontend:"
+	@curl -s -o /dev/null -w "Status: %{http_code}" http://localhost:3000/ || echo "Frontend not responding"
+	@echo ""
 
-# Production deployment helpers
-deploy-check: ## Pre-deployment checks
-	@echo "Running pre-deployment checks..."
-	@test -f .env || (echo "Error: .env file not found" && exit 1)
-	@grep -q "JWT_SECRET" .env || (echo "Error: JWT_SECRET not set in .env" && exit 1)
-	@grep -q "DB_PASSWORD" .env || (echo "Error: DB_PASSWORD not set in .env" && exit 1)
-	@echo "Pre-deployment checks passed!"
+# Cleanup commands
+clean: ## Clean up containers and images
+	@echo "🧹 Cleaning up..."
+	docker-compose down --rmi all --volumes --remove-orphans
 
-# Development helpers
-seed: ## Seed database with test data
-	@echo "Seeding database..."
-	docker-compose exec db psql -U bailanysta_user -d bailanysta -f /docker-entrypoint-initdb.d/init.sql
+clean-all: ## Remove everything including volumes
+	@echo "🧹 Removing everything..."
+	docker-compose down -v --remove-orphans
+	docker system prune -f --volumes
 
-reset-db: ## Reset database (WARNING: This will delete all data)
-	@echo "WARNING: This will delete all database data!"
-	@read -p "Are you sure? (y/N) " confirm && [ "$$confirm" = "y" ] || exit 1
-	docker-compose exec db psql -U bailanysta_user -d bailanysta -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+# Testing commands
+test: ## Run all tests
+	@echo "🧪 Running tests..."
+	go test ./api/... -v
+	cd web && npm run test:run
 
-# Git hooks
-install-hooks: ## Install git hooks
-	@echo "Installing git hooks..."
-	@mkdir -p .git/hooks
-	@cp infra/git-hooks/pre-commit .git/hooks/pre-commit 2>/dev/null || echo "No pre-commit hook found"
-	@chmod +x .git/hooks/*
-	@echo "Git hooks installed!"
+test-api: ## Run API tests only
+	go test ./api/... -v
+
+test-web: ## Run frontend tests only
+	cd web && npm run test:run
+
+# Code quality
+lint: ## Run linters
+	@echo "🔍 Running linters..."
+	cd web && npm run lint
+
+format: ## Format code
+	@echo "✨ Formatting code..."
+	cd web && npm run format
+
+# Quick setup for new environment
+setup: ## Initial setup for new environment
+	@echo "🛠️ Setting up Bailanysta..."
+	@if [ ! -f .env ]; then echo "📝 Creating .env from example..."; cp .env.example .env; echo "⚠️ Please edit .env file with your configuration"; fi
+	make install
+	@echo "✅ Setup complete! Run 'make dev' to start development or 'make prod' for production."
