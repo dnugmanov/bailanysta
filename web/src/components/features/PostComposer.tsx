@@ -118,7 +118,7 @@ export default function PostComposer() {
 
     createPostMutation.mutate({
       text: text.trim(),
-      course_id: selectedCourse && selectedCourse !== 'no-course' ? parseInt(selectedCourse) : undefined,
+      course_id: selectedCourse && selectedCourse !== 'no-course' ? selectedCourse : undefined,
     })
   }
 

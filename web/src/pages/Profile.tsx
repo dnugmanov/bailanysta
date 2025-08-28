@@ -11,6 +11,7 @@ import {
   Mail,
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
+import type { Post } from '@/types/api'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -40,7 +41,7 @@ export default function ProfilePage() {
     queryKey: ['user-posts', username],
     queryFn: () => {
       // This would be a getUserPosts API call
-      return { posts: [] } // Placeholder
+      return { posts: [] as Post[] } // Placeholder
     },
     enabled: !!username,
   })

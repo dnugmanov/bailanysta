@@ -29,7 +29,7 @@ export default function CommunityPage() {
       case 'following':
         return matchesSearch && member.is_following
       case 'popular':
-        return matchesSearch && member.followers_count > 2 // Adjusted for real data
+        return matchesSearch && (member.followers_count || 0) > 2 // Adjusted for real data
       default:
         return matchesSearch
     }
@@ -38,7 +38,7 @@ export default function CommunityPage() {
   // Stats calculation
   const totalUsers = communityMembers.length
   const followingCount = communityMembers.filter(u => u.is_following).length
-  const popularCount = communityMembers.filter(u => u.followers_count > 2).length
+  const popularCount = communityMembers.filter(u => (u.followers_count || 0) > 2).length
 
   if (isLoading) {
     return (

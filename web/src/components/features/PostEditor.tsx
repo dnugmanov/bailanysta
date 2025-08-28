@@ -70,7 +70,7 @@ export default function PostEditor({ post, isOpen, onClose }: PostEditorProps) {
 
     updatePostMutation.mutate({
       text: text.trim(),
-      course_id: selectedCourse && selectedCourse !== 'no-course' ? parseInt(selectedCourse) : undefined,
+      course_id: selectedCourse && selectedCourse !== 'no-course' ? selectedCourse : undefined,
     })
   }
 

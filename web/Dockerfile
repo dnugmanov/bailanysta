@@ -7,10 +7,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Fix Rollup native module issue on ARM64
+RUN rm -rf node_modules/.cache
 
 # Build the application
 RUN npm run build
